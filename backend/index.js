@@ -20,6 +20,11 @@ app.get("/api/data", async (req, res) => {
   }
 });
 
+app.post("/api/data", async (req, res) => {
+  console.log("worked");
+  return res.json("Worked");
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
