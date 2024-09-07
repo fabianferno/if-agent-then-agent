@@ -13,6 +13,11 @@ app.use(cors());
 // Middleware to parse JSON request bodies
 app.use(express.json());
 
+// Health check route
+app.get("/health", (req: Request, res: Response) => {
+  res.status(200).send("OK");
+});
+
 // Example route to make an API call
 app.get("/api/data", async (req: Request, res: Response) => {
   try {
