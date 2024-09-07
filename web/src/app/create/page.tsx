@@ -7,7 +7,8 @@ import {
     useNodesState,
     useEdgesState,
     MarkerType,
-} from '@xyflow/react'; import React, { useCallback } from 'react';
+} from '@xyflow/react';
+import React, { useCallback } from 'react';
 import Layout from '@/components/layouts/MainLayout';
 import { getStraightPath, useInternalNode } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
