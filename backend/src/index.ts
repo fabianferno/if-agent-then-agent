@@ -46,6 +46,35 @@ app.get("/api/social/farcaster", async (req: Request, res: Response) => {
   }
 });
 
+app.get("/api/news", async (req: Request, res: Response) => {
+  try {
+    const topic = req.query.topic as string;
+    const NEWS_API_BASE_URL = "https://newsapi.org/v2/everything";
+    const response = await axios.get(NEWS_API_BASE_URL, {
+      params: {
+        q: topic,
+        from: "2024-08-07",
+        sortBy: "publishedAt",
+        apiKey: process.env.NEWS_API_KEY,
+        language: "en",
+      },
+    });
+
+    const top3Articles = response.data.articles.slice(0, 3);
+
+    // Extract only the descriptions
+    const descriptions = top3Articles.map(
+      (article: any) => article.description
+    );
+
+    // Return the descriptions
+    res.json(descriptions);
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ error: "Failed to fetch data" });
+  }
+});
+
 // Start the server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
