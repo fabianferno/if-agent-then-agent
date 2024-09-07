@@ -5,7 +5,7 @@ pragma solidity ^0.8.9;
 // import "hardhat/console.sol";
 import "./IOracle.sol";
 
-contract Agent {
+contract NewsAgent {
 
     string public prompt;
 
@@ -16,8 +16,6 @@ contract Agent {
 
     struct AgentRun {
         address owner;
-        address flowletAddress; // Address of the Flowlet contract
-        uint flowId; 
         Message[] messages;
         uint responsesCount;
         uint8 max_iterations;
@@ -78,7 +76,7 @@ contract Agent {
         emit OracleAddressUpdated(newOracleAddress);
     }
 
-    function runAgent(string memory user_query , string memory fname, uint8 max_iterations , address flowletAddress , uint256 flowId) public returns (uint i) {
+    function runAgent(string memory user_query , string memory topic, uint8 max_iterations) public returns (uint i) {
         AgentRun storage run = agentRuns[agentRunCount];
 
         run.owner = msg.sender;
@@ -87,11 +85,8 @@ contract Agent {
         run.responsesCount = 0;
         run.max_iterations = max_iterations;
 
-        run.flowletAddress = flowletAddress;
-        run.flowId = flowId;
-
         string memory query = string(abi.encodePacked(
-        "import requests; url = 'https://if-agent-then-agent.onrender.com/api/social/farcaster?fname=",fname,"';", 
+        "import requests; url = 'https://280d-49-204-142-192.ngrok-free.app/api/news?topic=",topic,"';", 
         "response = requests.get(url); data = response.json(); print('Response Data:', data)"
     ));
 
@@ -128,12 +123,10 @@ contract Agent {
             run.messages.push(newMessage);
             run.responsesCount++;
             run.is_finished = true;
-            notifyFlowlet(runId);
             return;
         }
         if (run.responsesCount >= run.max_iterations) {
             run.is_finished = true;
-           notifyFlowlet(runId);
             return;
         }
         if (!compareStrings(response.content, "")) {
@@ -155,7 +148,6 @@ contract Agent {
             return;
         }
         run.is_finished = true;
-        notifyFlowlet(runId);
     }
 
     function onOracleFunctionResponse(
@@ -201,16 +193,5 @@ contract Agent {
 
     function compareStrings(string memory a, string memory b) private pure returns (bool) {
         return (keccak256(abi.encodePacked((a))) == keccak256(abi.encodePacked((b))));
-    }
-
-    function notifyFlowlet(uint runId) private {
-        AgentRun storage run = agentRuns[runId];
-        if (run.flowletAddress != address(0)) {
-            // Assuming the Flowlet contract has an `onAgentRunCompleted` function
-            (bool success, ) = run.flowletAddress.call(
-                abi.encodeWithSignature("onAgentRunCompleted(uint256,address,string)", runId, address(this),run.messages) // add result 
-            );
-            require(success, "Flowlet notification failed");
-        }
     }
 }
