@@ -8,18 +8,18 @@ interface IAgent {
 contract Flowlet {
 
     struct Flow {
-        address[] agents; // Array of agents in the flow sequence
+        AgentsTask[] agents; // Array of agents in the flow sequence
         uint currentAgentIndex; // Index of the current agent to run
         uint runId; // Run ID for tracking
         address owner; // Owner of the flow
         bool isFinished; // Flow completion status
+        string mainContext;
     }
 
     struct AgentsTask {
         address agentAddress;
-        string userQuery;
-        string AgentSpecificParam;
-
+        string agentContext;
+        // string swarmKnowledge;
     }
 
     mapping(uint => Flow) public flows; // Mapping of flow IDs to flows
@@ -30,19 +30,26 @@ contract Flowlet {
     event FlowCompleted(uint indexed flowId);
 
     // Start a new flow with a sequence of agents
-    function startFlow(address[] memory agents, string memory GoalQuery) public returns (uint) {  /// extra params [] 
+    function startFlow(AgentsTask[] memory agents, string memory _mainContext) public returns (uint) {  /// extra params [] 
         uint flowId = flowCount;
         Flow storage flow = flows[flowId];
-        flow.agents = agents;
         flow.currentAgentIndex = 0;
         flow.owner = msg.sender;
         flow.isFinished = false;
+        flow.mainContext = _mainContext;
         flowCount++;
+
+        for (uint i = 0; i < agents.length; i++) {
+        flow.agents.push(agents[i]);
+        }
+
+        flowCount++;
+
 
         emit FlowCreated(flowId, msg.sender);
 
         // Trigger the first agent
-        triggerNextAgent(flowId,GoalQuery,"");
+        triggerNextAgent(flowId,_mainContext,"none");
 
         return flowId;
     }
@@ -53,7 +60,7 @@ contract Flowlet {
         Flow storage flow = flows[flowId];
 
         require(!flow.isFinished, "Flow is already finished");
-        require(flow.agents[flow.currentAgentIndex] == agent, "Invalid agent callback");
+        require(flow.agents[flow.currentAgentIndex].agentAddress == agent, "Invalid agent callback");
 
         flow.currentAgentIndex++;
 
@@ -61,19 +68,17 @@ contract Flowlet {
             flow.isFinished = true;
             emit FlowCompleted(flowId);
         } else {
-            triggerNextAgent(flowId,"Analyze the farcaster account of leofrank and feed the data to the Crypto agent and analyzes the trends",result);
+            triggerNextAgent(flowId,flow.mainContext,result);
         }
     }
 
     // Triggers the next agent in the sequence
-    function triggerNextAgent(uint flowId ,string memory GoalQuery,string memory result) internal {
+    function triggerNextAgent(uint flowId ,string memory _mainContext,string memory result) internal {
         Flow storage flow = flows[flowId];
         require(!flow.isFinished, "Flow is already finished");
-
-        address nextAgent = flow.agents[flow.currentAgentIndex];
-        string memory query = string(abi.encodePacked(GoalQuery,"Result from PreviousAgent : ",result));
-        uint runId = IAgent(nextAgent).runAgent(query, "leofrank", 2,address(this),flowId); // Customize params as needed
-
+        address nextAgent = flow.agents[flow.currentAgentIndex].agentAddress;
+        string memory query = string(abi.encodePacked(_mainContext,"Result from PreviousAgent : ",result));
+        uint runId = IAgent(nextAgent).runAgent(query, flow.agents[flow.currentAgentIndex].agentContext, 2,address(this),flowId); // Customize params as needed
         flow.runId = runId;
         emit AgentTriggered(flowId, nextAgent, runId);
     }

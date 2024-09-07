@@ -14,14 +14,18 @@ contract NewsAgent {
         string content;
     }
 
+   
     struct AgentRun {
         address owner;
+        address flowletAddress; // Address of the Flowlet contract
+        uint flowId; 
         Message[] messages;
         uint responsesCount;
         uint8 max_iterations;
         bool is_finished;
         string user_query;
     }
+
 
     mapping(uint => AgentRun) public agentRuns;
     uint private agentRunCount;
@@ -76,7 +80,7 @@ contract NewsAgent {
         emit OracleAddressUpdated(newOracleAddress);
     }
 
-    function runAgent(string memory user_query , string memory topic, uint8 max_iterations) public returns (uint i) {
+    function runAgent(string memory user_query , string memory topic, uint8 max_iterations,address flowletAddress , uint256 flowId) public returns (uint i) {
         AgentRun storage run = agentRuns[agentRunCount];
 
         run.owner = msg.sender;
@@ -85,8 +89,11 @@ contract NewsAgent {
         run.responsesCount = 0;
         run.max_iterations = max_iterations;
 
+        run.flowletAddress = flowletAddress;
+        run.flowId = flowId;
+
         string memory query = string(abi.encodePacked(
-        "import requests; url = 'https://280d-49-204-142-192.ngrok-free.app/api/news?topic=",topic,"';", 
+        "import requests; url = 'https://2d68-49-204-142-192.ngrok-free.app/api/news?topic=",topic,"';", 
         "response = requests.get(url); data = response.json(); print('Response Data:', data)"
     ));
 
@@ -109,7 +116,7 @@ contract NewsAgent {
         return currentId;
     }
 
-    function onOracleOpenAiLlmResponse(
+   function onOracleOpenAiLlmResponse(
         uint runId,
         IOracle.OpenAiResponse memory response,
         string memory errorMessage
@@ -123,10 +130,12 @@ contract NewsAgent {
             run.messages.push(newMessage);
             run.responsesCount++;
             run.is_finished = true;
+            notifyFlowlet(runId);
             return;
         }
         if (run.responsesCount >= run.max_iterations) {
             run.is_finished = true;
+           notifyFlowlet(runId);
             return;
         }
         if (!compareStrings(response.content, "")) {
@@ -138,7 +147,7 @@ contract NewsAgent {
         }
         if (run.responsesCount == 1) {
             Message memory UserMessage;
-            UserMessage.content = string(abi.encodePacked("With the following pyhton execution result, please reply to this user's query : " , run.user_query));
+            UserMessage.content = string(abi.encodePacked("With the following pyhton execution result, please reply to this user's query : " , run.user_query,"Give your thoughts as your role a specific agent"));
             UserMessage.role = "user";
             run.messages.push(UserMessage);
             IOracle(oracleAddress).createOpenAiLlmCall(runId, config);
@@ -148,8 +157,8 @@ contract NewsAgent {
             return;
         }
         run.is_finished = true;
+        notifyFlowlet(runId);
     }
-
     function onOracleFunctionResponse(
         uint runId,
         string memory response,
@@ -193,5 +202,15 @@ contract NewsAgent {
 
     function compareStrings(string memory a, string memory b) private pure returns (bool) {
         return (keccak256(abi.encodePacked((a))) == keccak256(abi.encodePacked((b))));
+    }
+
+    function notifyFlowlet(uint runId) private {
+        AgentRun storage run = agentRuns[runId];
+        if (run.flowletAddress != address(0)) {
+            (bool success, ) = run.flowletAddress.call(
+                abi.encodeWithSignature("onAgentRunCompleted(uint256,address,string)", runId, address(this),getMessageHistoryContents(runId)) // add result 
+            );
+            require(success, "Flowlet notification failed");
+        }
     }
 }

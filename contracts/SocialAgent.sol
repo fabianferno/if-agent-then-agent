@@ -145,7 +145,7 @@ contract Agent {
         }
         if (run.responsesCount == 1) {
             Message memory UserMessage;
-            UserMessage.content = string(abi.encodePacked("With the following pyhton execution result, please reply to this user's query : " , run.user_query));
+            UserMessage.content = string(abi.encodePacked("With the following pyhton execution result, please reply to this user's query : " , run.user_query,"Give your thoughts as your role a specific agent"));
             UserMessage.role = "user";
             run.messages.push(UserMessage);
             IOracle(oracleAddress).createOpenAiLlmCall(runId, config);
@@ -208,7 +208,7 @@ contract Agent {
         if (run.flowletAddress != address(0)) {
             // Assuming the Flowlet contract has an `onAgentRunCompleted` function
             (bool success, ) = run.flowletAddress.call(
-                abi.encodeWithSignature("onAgentRunCompleted(uint256,address,string)", runId, address(this),run.messages) // add result 
+                abi.encodeWithSignature("onAgentRunCompleted(uint256,address,string)", runId, address(this),getMessageHistoryContents(runId)) // add result 
             );
             require(success, "Flowlet notification failed");
         }
