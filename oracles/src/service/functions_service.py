@@ -73,7 +73,7 @@ async def _call_function(
                         await python_interpreter_use_case.execute(formatted_input)
                     )
                     response = python_interpreter_result.output
-                    error_message = python_interpreter_result.error
+                    error_message = "error" if python_interpreter_result.exit_code else ""
                 else:
                     response = ""
                     error_message = f"Unknown function '{function_call.function_type}'"
