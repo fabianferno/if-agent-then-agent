@@ -1,0 +1,25 @@
+type Flowlet_AgentResponse {
+  id: ID!
+  flowId: BigInt!
+  agent: String!
+  result: String!
+}
+
+type Flowlet_AgentTriggered {
+  id: ID!
+  flowId: BigInt!
+  agent: String!
+  runId: BigInt!
+}
+
+type Flowlet_FlowCompleted {
+  id: ID!
+  flowId: BigInt!
+}
+
+type Flowlet_FlowCreated {
+  id: ID!
+  flowId: BigInt!
+  owner: String!
+}
+

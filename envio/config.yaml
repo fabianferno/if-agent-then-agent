@@ -1,0 +1,16 @@
+# yaml-language-server: $schema=./node_modules/envio/evm.schema.json
+name: ifata
+networks:
+- id: 696969
+  start_block: 0
+  contracts:
+  - name: Flowlet
+    address:
+    - 0x019B88F1B886e0e4032270C4DdEe27fb3F13B6FC
+    handler: src/EventHandlers.ts
+    events:
+    - event: AgentResponse(uint256 indexed flowId, address indexed agent, string result)
+    - event: AgentTriggered(uint256 indexed flowId, address indexed agent, uint256 runId)
+    - event: FlowCompleted(uint256 indexed flowId)
+    - event: FlowCreated(uint256 indexed flowId, address indexed owner)
+rollback_on_reorg: false
