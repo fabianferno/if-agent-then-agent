@@ -8,7 +8,7 @@ import {
     useEdgesState,
     MarkerType,
 } from '@xyflow/react';
-import React, { useCallback } from 'react';
+import React, { useCallback, useState, useEffect } from 'react';
 import MainLayout from '@/components/layouts/MainLayout';
 import { getStraightPath, useInternalNode } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
@@ -17,6 +17,8 @@ import { Handle, Position, useConnection } from '@xyflow/react';
 import { getEdgeParams } from '@/components/reactflow/utils';
 import Link from 'next/link';
 import Logs from '@/components/Logs';
+import { useParams } from 'next/navigation';
+import axios from 'axios';
 
 function FloatingEdge({ id, source, target, markerEnd, style }: { id: string, source: string, target: string, markerEnd: string, style: React.CSSProperties }) {
     const sourceNode = useInternalNode(source);
@@ -124,6 +126,22 @@ const edgeTypes = {
 
 
 const EasyConnectExample = () => {
+    const { id } = useParams();
+    const [attestation, setAttestation] = useState<null | {
+        id: string;
+        mode: string;
+        chainId: number;
+        attestationId: string;
+        attester: string;
+        from: string;
+        attestTimestamp: string;
+        data: string // JSON stringified
+    }>(null);
+    const [loading, setLoading] = useState(true);
+
+
+
+
     const [nodes, setNodes, onNodesChange] = useNodesState([
         {
             id: '1',
@@ -173,111 +191,103 @@ const EasyConnectExample = () => {
         ? { bg: '', stroke: 'white' }
         : { bg: '', stroke: 'black' };; // Add this line
 
+    async function getAttestation(id: string) {
+        await axios.get(`https://mainnet-rpc.sign.global/api/index/attestations/${id}`).then(
+            (response) => {
+                setAttestation(response.data.data)
+                setLoading(false)
+                console.log("Attestation", response.data.data)
+            }
+        )
+    }
+
+    useEffect(() => {
+        if (id) {
+            getAttestation(id as string);
+        }
+    }, [id]);
+
+
+
     return (
         <MainLayout>
-            <div className={`flex flex-col w-[60vw]`} >
-                <div className="flex flex-row justify-between items-start mb-6">
-                    <div className='flex flex-col gap-4'>
-                        <div className='mb-5'>
-                            <h1 className="text-2xl font-bold">Create a new workflow</h1>
-                            <p>Select an agent and create a workflow to automate your tasks.</p>
+            {loading && attestation ? <div>Loading...</div> : <main>
+                <div className={`flex flex-col w-[60vw]`} >
+                    <div className="flex flex-row justify-between items-start mb-6">
+                        <div className='flex flex-col gap-4'>
+                            <div className='mb-5 p-6 bg-gray-100 dark:bg-zinc-800 rounded-lg shadow-md'>
+                                <h1 className="text-xl font-bold mb-4">{JSON.parse(attestation?.data || '{}').name || 'Flowlet not found'}</h1>
+                                <div className="grid grid-cols-2 gap-2 text-sm">
+                                    <div>
+                                        <h2 className="font-semibold">Flowlet Details</h2>
+                                        <p>ID: <a className='text-orange-500' href={`https://scan.sign.global/attestation/${attestation?.id}`} target="_blank" rel="noopener noreferrer">{attestation?.id?.slice(0, 8) || 'N/A'}...</a></p>
+                                        <p>Created: {attestation?.attestTimestamp ? new Date(parseInt(attestation.attestTimestamp) * 1000).toLocaleDateString() : 'N/A'}</p>
+                                        <p>By: {JSON.parse(attestation?.data || '{}').createdBy?.slice(0, 8) || 'N/A'}...</p>
+                                    </div>
+                                    <div>
+                                        <h2 className="font-semibold">Attestation Info</h2>
+                                        <p>Attester: {attestation?.attester?.slice(0, 8) || 'N/A'}...</p>
+                                        <p>From: {attestation?.from?.slice(0, 8) || 'N/A'}...</p>
+                                    </div>
+                                </div>
+                            </div>
+
                         </div>
-                        <div className="grid grid-cols-4 text-center gap-2">
-                            <button onClick={() => {
-                                setNodes([...nodes, {
-                                    id: '4',
-                                    type: 'custom',
-                                    position: { x: 0, y: 0 },
-                                    data: {
-                                        label: 'News Agent',
-                                    },
-                                }])
-                            }} className="text-md text-nowrap bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 rounded-md p-2 font-bold">
-                                News Agent 📰
+                        <div className='flex flex-col items-end justify-end gap-2'>
+                            <div className="flex justify-between w-full gap-2">
+                                <button onClick={() => setNodes([])} className="flex-1 text-md text-nowrap bg-zinc-700 dark:bg-zinc-600 text-white rounded-md p-2 font-bold hover:bg-zinc-600 dark:hover:bg-zinc-700 transition ease-in-out">
+                                    Reset flowlet
+                                </button>
+                                <button onClick={() => {
+                                    // Implement beautify logic here
+                                    console.log('Beautify functionality to be implemented');
+                                }} className="flex-1 text-md text-nowrap bg-zinc-800 dark:bg-zinc-700 text-white rounded-md p-2 font-bold hover:bg-zinc-700 dark:hover:bg-zinc-800 transition ease-in-out">
+                                    Beautify
+                                </button>
+                            </div>
+                            <button className="flex items-center text-zinc-900 justify-between text-md bg-orange-500 text-nowrap w-full dark:border-orange-500 dark:text-zinc-900 border hover:bg-orange-500 border-orange-500 rounded-md p-2 font-bold transition ease-in-out dark:hover:text-zinc-900">
+                                <span>
+                                    Start Flowlet
+                                </span>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12a7.5 7.5 0 0 0 15 0m-15 0a7.5 7.5 0 1 1 15 0m-15 0H3m16.5 0H21m-1.5 0H12m-8.457 3.077 1.41-.513m14.095-5.13 1.41-.513M5.106 17.785l1.15-.964m11.49-9.642 1.149-.964M7.501 19.795l.75-1.3m7.5-12.99.75-1.3m-6.063 16.658.26-1.477m2.605-14.772.26-1.477m0 17.726-.26-1.477M10.698 4.614l-.26-1.477M16.5 19.794l-.75-1.299M7.5 4.205 12 12m6.894 5.785-1.149-.964M6.256 7.178l-1.15-.964m15.352 8.864-1.41-.513M4.954 9.435l-1.41-.514M12.002 12l-3.75 6.495" />
+                                </svg>
                             </button>
-                            <button onClick={() => {
-                                setNodes([...nodes, {
-                                    id: '5',
-                                    type: 'custom',
-                                    position: { x: 0, y: 0 },
-                                    data: {
-                                        label: 'Crypto Agent',
-                                    },
-                                }])
-                            }} className="text-md text-nowrap bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 rounded-md p-2 font-bold">
-                                Crypto Agent ⛓️
+                            <button className="flex items-center justify-between text-md text-nowrap w-full dark:border-orange-500 dark:text-zinc-100 border hover:bg-orange-500 border-orange-500 rounded-md p-2 font-bold transition ease-in-out dark:hover:text-zinc-900">
+                                <span>
+                                    Stop Flowlet
+                                </span>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12a7.5 7.5 0 0 0 15 0m-15 0a7.5 7.5 0 1 1 15 0m-15 0H3m16.5 0H21m-1.5 0H12m-8.457 3.077 1.41-.513m14.095-5.13 1.41-.513M5.106 17.785l1.15-.964m11.49-9.642 1.149-.964M7.501 19.795l.75-1.3m7.5-12.99.75-1.3m-6.063 16.658.26-1.477m2.605-14.772.26-1.477m0 17.726-.26-1.477M10.698 4.614l-.26-1.477M16.5 19.794l-.75-1.299M7.5 4.205 12 12m6.894 5.785-1.149-.964M6.256 7.178l-1.15-.964m15.352 8.864-1.41-.513M4.954 9.435l-1.41-.514M12.002 12l-3.75 6.495" />
+                                </svg>
                             </button>
-                            <button onClick={() => {
-                                setNodes([...nodes, {
-                                    id: '6',
-                                    type: 'custom',
-                                    position: { x: 0, y: 0 },
-                                    data: {
-                                        label: 'Social Agent',
-                                    },
-                                }])
-                            }} className="text-md text-nowrap bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 rounded-md p-2 font-bold">
-                                Social Agent 💬
-                            </button>
-                            <Link href="https://github.com/fabianferno/if-agent-then-agent/blob/main/contracts/AgentTemplate.sol" target='_blank' className="text-md text-nowrap bg-zinc-800 dark:border-zinc-200 border text-white dark:text-zinc-100 rounded-md p-2 font-bold">
-                                Create Agent +
-                            </Link>
                         </div>
                     </div>
-                    <div className='flex flex-col items-end justify-end gap-2'>
-                        <div className="flex justify-between w-full gap-2">
-                            <button onClick={() => setNodes([])} className="flex-1 text-md text-nowrap bg-zinc-700 dark:bg-zinc-600 text-white rounded-md p-2 font-bold hover:bg-zinc-600 dark:hover:bg-zinc-700 transition ease-in-out">
-                                Reset flowlet
-                            </button>
-                            <button onClick={() => {
-                                // Implement beautify logic here
-                                console.log('Beautify functionality to be implemented');
-                            }} className="flex-1 text-md text-nowrap bg-zinc-800 dark:bg-zinc-700 text-white rounded-md p-2 font-bold hover:bg-zinc-700 dark:hover:bg-zinc-800 transition ease-in-out">
-                                Beautify
-                            </button>
-                        </div>
-                        <button className="flex items-center text-zinc-900 justify-between text-md bg-orange-500 text-nowrap w-full dark:border-orange-500 dark:text-zinc-900 border hover:bg-orange-500 border-orange-500 rounded-md p-2 font-bold transition ease-in-out dark:hover:text-zinc-900">
-                            <span>
-                                Start Flowlet
-                            </span>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12a7.5 7.5 0 0 0 15 0m-15 0a7.5 7.5 0 1 1 15 0m-15 0H3m16.5 0H21m-1.5 0H12m-8.457 3.077 1.41-.513m14.095-5.13 1.41-.513M5.106 17.785l1.15-.964m11.49-9.642 1.149-.964M7.501 19.795l.75-1.3m7.5-12.99.75-1.3m-6.063 16.658.26-1.477m2.605-14.772.26-1.477m0 17.726-.26-1.477M10.698 4.614l-.26-1.477M16.5 19.794l-.75-1.299M7.5 4.205 12 12m6.894 5.785-1.149-.964M6.256 7.178l-1.15-.964m15.352 8.864-1.41-.513M4.954 9.435l-1.41-.514M12.002 12l-3.75 6.495" />
-                            </svg>
-                        </button>
-                        <button className="flex items-center justify-between text-md text-nowrap w-full dark:border-orange-500 dark:text-zinc-100 border hover:bg-orange-500 border-orange-500 rounded-md p-2 font-bold transition ease-in-out dark:hover:text-zinc-900">
-                            <span>
-                                Stop Flowlet
-                            </span>
-                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12a7.5 7.5 0 0 0 15 0m-15 0a7.5 7.5 0 1 1 15 0m-15 0H3m16.5 0H21m-1.5 0H12m-8.457 3.077 1.41-.513m14.095-5.13 1.41-.513M5.106 17.785l1.15-.964m11.49-9.642 1.149-.964M7.501 19.795l.75-1.3m7.5-12.99.75-1.3m-6.063 16.658.26-1.477m2.605-14.772.26-1.477m0 17.726-.26-1.477M10.698 4.614l-.26-1.477M16.5 19.794l-.75-1.299M7.5 4.205 12 12m6.894 5.785-1.149-.964M6.256 7.178l-1.15-.964m15.352 8.864-1.41-.513M4.954 9.435l-1.41-.514M12.002 12l-3.75 6.495" />
-                            </svg>
-                        </button>
+                    <div className={`${bg} border-t border-zinc-700 dark:border-zinc-600 rounded-lg transition-colors duration-200`} style={{ height: '40vh', width: '100%' }}>
+                        <ReactFlow
+                            nodes={nodes}
+                            edges={edges}
+                            onNodesChange={onNodesChange}
+                            onEdgesChange={onEdgesChange}
+                            onConnect={onConnect}
+                            fitView
+                            nodeTypes={nodeTypes}
+                            edgeTypes={edgeTypes as any}
+                            defaultEdgeOptions={{
+                                ...defaultEdgeOptions,
+                                style: { ...defaultEdgeOptions.style, stroke },
+                            }}
+                            connectionLineComponent={CustomConnectionLine as any}
+                            connectionLineStyle={{
+                                strokeWidth: 2,
+                                stroke: theme === 'dark' ? 'white' : 'black'
+                            }}
+                        />
                     </div>
                 </div>
-                <div className={`${bg} border-t border-zinc-700 dark:border-zinc-600 rounded-lg transition-colors duration-200`} style={{ height: '40vh', width: '100%' }}>
-                    <ReactFlow
-                        nodes={nodes}
-                        edges={edges}
-                        onNodesChange={onNodesChange}
-                        onEdgesChange={onEdgesChange}
-                        onConnect={onConnect}
-                        fitView
-                        nodeTypes={nodeTypes}
-                        edgeTypes={edgeTypes as any}
-                        defaultEdgeOptions={{
-                            ...defaultEdgeOptions,
-                            style: { ...defaultEdgeOptions.style, stroke },
-                        }}
-                        connectionLineComponent={CustomConnectionLine as any}
-                        connectionLineStyle={{
-                            strokeWidth: 2,
-                            stroke: theme === 'dark' ? 'white' : 'black'
-                        }}
-                    />
-                </div>
-            </div>
-            <Logs />
-        </MainLayout>
+                <Logs />
+            </main>}
+        </MainLayout >
     );
 };
 

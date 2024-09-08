@@ -1,13 +1,26 @@
 "use client";
 import { useAccount } from "wagmi";
-import { useEffect } from "react";
 import MainLayout from "@/components/layouts/MainLayout";
 import Link from "next/link";
+import axios from "axios";
+import { useState, useEffect } from "react";
 
 export default function Home() {
     const { address } = useAccount();
+    const [flowlets, setFlowlets] = useState([])
 
-    useEffect(() => { }, []);
+    async function getFlowlets() {
+        await axios.get("https://mainnet-rpc.sign.global/api/index/attestations?schemaId=SPS_hjADGnEZxD9KS1sUIOA_a&mode=offchain").then(
+            (response) => {
+                setFlowlets(response?.data?.data?.rows)
+                console.log("Flowlets", response.data.data.rows)
+            }
+        )
+    }
+
+    useEffect(() => {
+        getFlowlets()
+    }, []);
 
     return (
         <MainLayout>
@@ -39,28 +52,27 @@ export default function Home() {
                             />
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 h-[43vh] overflow-y-auto">
-                            {[
-                                { id: 1, name: "portfolio-minions-flowlet" },
-                                { id: 2, name: "crypto-market-analyzer" },
-                                { id: 3, name: "social-media-sentiment-tracker" },
-                                { id: 4, name: "ai-content-generator" },
-                                { id: 5, name: "smart-home-automation" },
-                                { id: 6, name: "personal-finance-assistant" },
-                                { id: 7, name: "health-and-fitness-coach" },
-                                { id: 8, name: "language-learning-companion" },
-                                { id: 9, name: "travel-planner-and-guide" },
-                            ].map((flowlet) => (
-                                <div key={flowlet.id} className="shadow-none hover:shadow-lg hover:border-[0.2px] hover:border-orange-500 text-start bg-white dark:bg-zinc-800 p-6 rounded-lg transition-shadow duration-300">
-                                    <h3 className="text-xl font-medium mb-2 text-zinc-800 dark:text-zinc-100">{flowlet.name}</h3>
-                                    <p className="text-zinc-600 dark:text-zinc-300 mb-4">Flowlet ID: {flowlet.id}</p>
-                                    <Link
-                                        href={`/flowlets/${flowlet.id}`}
-                                        className="inline-block px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition duration-300"
-                                    >
-                                        Run Flowlet
-                                    </Link>
-                                </div>
-                            ))}
+                            {flowlets.map((flowlet: {
+                                id: string,
+                                attestationId: string,
+                                data: string,
+                                attestTimestamp: number
+                            }) => {
+                                const flowletData = JSON.parse(flowlet.data);
+                                return (
+                                    <div key={flowlet.id} className="h-[13rem] shadow-none hover:shadow-lg hover:border-[0.2px] hover:border-orange-500 text-start bg-white dark:bg-zinc-800 p-6 rounded-lg transition-shadow duration-300">
+                                        <h3 className="text-xl font-medium mb-2 text-zinc-800 dark:text-zinc-100">{flowletData.name}</h3>
+                                        <p className="text-zinc-600 dark:text-zinc-300 mb-2">Created by: {flowletData.createdBy.slice(0, 6)}...{flowletData.createdBy.slice(-4)}</p>
+                                        <p className="text-zinc-600 dark:text-zinc-300 mb-4">Created: {new Date(flowlet.attestTimestamp * 1000).toLocaleDateString()}</p>
+                                        <Link
+                                            href={`/flowlets/${flowlet.id}`}
+                                            className="inline-block px-4 py-2 bg-orange-500 text-white rounded-md hover:bg-orange-600 transition duration-300"
+                                        >
+                                            View Flowlet
+                                        </Link>
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>

@@ -22,8 +22,8 @@ export default function Layout({
                         className="relative rounded-md mb-2"
                         src="/if-agent-then-agent.png"
                         alt="Logo"
-                        width={500}
-                        height={500}
+                        width={200}
+                        height={200}
                         priority
                     />
                 </Link>

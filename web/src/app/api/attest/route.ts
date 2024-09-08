@@ -18,6 +18,8 @@ export async function POST(req: NextRequest) {
     try {
         let { data, indexingValue } = await req.json();
 
+        console.log(data, indexingValue)
+
         // TODO: Implement signature logic here
         try {
             // Initialize SignProtocolClient for off-chain attestation

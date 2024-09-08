@@ -128,6 +128,10 @@ const edgeTypes = {
 
 const EasyConnectExample = () => {
     const [flowletName, setFlowletName] = useState('');
+    const [flowlet, setFlowlet] = useState([]);
+    const [attesting, setAttesting] = useState(false);
+    const [attestationId, setAttestationId] = useState("");
+
     const { address } = useAccount();
 
     const [edges, setEdges, onEdgesChange] = useEdgesState([] as any[]);
@@ -160,7 +164,6 @@ const EasyConnectExample = () => {
                 label: 'Social Agent',
             },
         },
-
     ] as any[]);
 
 
@@ -185,37 +188,44 @@ const EasyConnectExample = () => {
         : { bg: '', stroke: 'black' };; // Add this line
 
     function addNode(data: any) {
-        setNodes([...nodes, {
-            id: nodes.length + "",
+        const newNode = {
+            id: nodes.length === 0 ? "0" : `${nodes.length}`,
             type: 'custom',
-            position: { x: 0, y: 0 },
+            position: { x: nodes.length * 25, y: 0 },
             data,
-        }]);
+        };
+        setNodes(nodes.length === 0 ? [newNode] : [...nodes, newNode]);
     }
 
     function parseFlowletFromConnections() {
-        const connections = edges.map((edge) => {
-            return {
-                from: edge.source,
-                to: edge.target,
-            }
+        const flow = [nodes[0].data]
+        edges.forEach((edge) => {
+            flow.push(nodes.find(node => node.id == edge.target).data)
         })
-        return connections
+        return JSON.stringify(flow)
     }
 
 
     async function saveFlowlet() {
-        console.log("Saving flowlet:", nodes);
-        const response = await axios.post('/api/attest', {
-            data: {
-                name: "My Flowlet",
-                createdBy: address,
-                flowlet: parseFlowletFromConnections(),
-            },
-            indexingValue: address
-        });
-
-        console.log("Attestation response:", response);
+        setAttesting(true);
+        const flowlet = parseFlowletFromConnections()
+        console.log("Saving flowlet:", flowlet);
+        try {
+            const response = await axios.post('/api/attest', {
+                data: {
+                    name: flowletName,
+                    createdBy: address,
+                    flowlet: parseFlowletFromConnections(),
+                },
+                indexingValue: address
+            });
+            setAttestationId(response.data.attestation.attestationId)
+            console.log("Attestation response:", response.data.attestation.attestationId);
+        } catch (error) {
+            console.error("Error saving flowlet:", error);
+        } finally {
+            setAttesting(false);
+        }
     }
 
     return (
@@ -254,29 +264,60 @@ const EasyConnectExample = () => {
                             </Link>
                         </div>
                     </div>
-                    <div className='flex w-[30%] flex-col items-between justify-between gap-2'>
-                        <div className="flex items-center justify-between w-full gap-2 mr-5">
-                            <button onClick={() => setNodes([])} className="flex-1 text-md text-nowrap bg-zinc-700 dark:bg-zinc-600 text-white rounded-md p-2 font-bold hover:bg-zinc-600 dark:hover:bg-zinc-700 transition ease-in-out">
-                                Reset flowlet
-                            </button>
-                            <button onClick={() => {
-                                // Implement beautify logic here 
-                            }} className="flex-1 text-md text-nowrap bg-zinc-800 dark:bg-zinc-700 text-white rounded-md p-2 font-bold hover:bg-zinc-700 dark:hover:bg-zinc-800 transition ease-in-out">
-                                Beautify
-                            </button>
+                    {!address ?
+                        <div className="flex flex-col items-center justify-center p-4 bg-zinc-800 dark:bg-zinc-700 rounded-md text-white">
+                            <svg xmlns="http://www.w3.org/2000/svg" className="h-12 w-12 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                            <p className="text-lg font-semibold mb-2">Connect Wallet</p>
+                            <p className="text-sm text-center mb-4">You need to connect your wallet to create a flowlet</p>
+
                         </div>
-                        <div className='flex flex-col items-center justify-between gap-2'>
-                            <input type="text" placeholder="Flowlet name" className="flex w-full text-md text-nowrap bg-zinc-700 dark:bg-zinc-600 text-white rounded-md p-2 font-bold hover:bg-zinc-600 dark:hover:bg-zinc-700 transition ease-in-out" />
-                            <button onClick={saveFlowlet} className="flex items-center text-zinc-900 justify-between text-md bg-orange-500 text-nowrap w-full dark:border-orange-500 dark:text-zinc-900 border hover:bg-orange-500 border-orange-500 rounded-md p-2 font-bold transition ease-in-out dark:hover:text-zinc-900">
-                                <span className='mr-2'>
-                                    Save Flowlet
-                                </span>
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
+                        :
+                        <div className='flex w-[30%] flex-col items-between justify-between gap-2'>
+                            <div className="flex items-center justify-between w-full gap-2 mr-5">
+                                <button onClick={() => setNodes([])} className="flex-1 text-md text-nowrap bg-zinc-700 dark:bg-zinc-600 text-white rounded-md p-2 font-bold hover:bg-zinc-600 dark:hover:bg-zinc-700 transition ease-in-out">
+                                    Reset flowlet
+                                </button>
+                                <button onClick={() => {
+                                    // Implement beautify logic here 
+                                }} className="flex-1 text-md text-nowrap bg-zinc-800 dark:bg-zinc-700 text-white rounded-md p-2 font-bold hover:bg-zinc-700 dark:hover:bg-zinc-800 transition ease-in-out">
+                                    Beautify
+                                </button>
+                            </div>
+                            <div className='flex flex-col items-center justify-between gap-2'>
+                                <input onChange={
+                                    (e) => {
+                                        setFlowletName(e.target.value);
+                                    }
+                                } type="text" placeholder="Flowlet name" className="flex w-full text-md text-nowrap bg-zinc-700 dark:bg-zinc-600 text-white rounded-md p-2 font-bold hover:bg-zinc-600 dark:hover:bg-zinc-700 transition ease-in-out" />
+                                <button onClick={saveFlowlet} disabled={attesting} className="flex items-center text-zinc-900 justify-between text-md bg-orange-500 text-nowrap w-full dark:border-orange-500 dark:text-zinc-900 border hover:bg-orange-500 border-orange-500 rounded-md p-2 font-bold transition ease-in-out dark:hover:text-zinc-900">
+                                    {attesting ? (
+                                        <div className="flex items-center justify-center">
+                                            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-zinc-900"></div>
+                                            <span className="ml-2">Attesting...</span>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <span className='mr-2'>Attest Flowlet</span>
+                                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
+                                                <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" />
+                                            </svg>
+                                        </>
+                                    )}
+                                </button>
+                                {attestationId && (
+                                    <a
+                                        href={`https://scan.sign.global/attestation/${attestationId}`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-blue-500 hover:text-blue-600 transition-colors duration-200"
+                                    >
+                                        View Attestation
+                                    </a>
+                                )}
+                            </div>
+                        </div>}
                 </div>
                 <div className={`${bg}  dark:border-zinc-600 rounded-lg transition-colors duration-200`} style={{ height: '40vh', width: '100%' }}>
                     <ReactFlow
