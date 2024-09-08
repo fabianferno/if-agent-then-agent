@@ -5,7 +5,7 @@ pragma solidity ^0.8.9;
 // import "hardhat/console.sol";
 import "./IOracle.sol";
 
-contract Agent {
+contract CryptoAnalyisAgent {
 
     string public prompt;
 
@@ -91,6 +91,7 @@ contract Agent {
         run.flowId = flowId;
 
 
+
         Message memory systemMessage;
         systemMessage.content = prompt;
         systemMessage.role = "system";
@@ -141,15 +142,10 @@ contract Agent {
         }
         if (run.responsesCount == 1) {
             Message memory UserMessage;
-            UserMessage.content = string(abi.encodePacked("If the descison contains FARM , then execute this python code"));
+            UserMessage.content = "Analyze the current market trends give a brief summary about the context";
             UserMessage.role = "user";
             run.messages.push(UserMessage);
-            // IOracle(oracleAddress).createOpenAiLlmCall(runId, config);
-            if(containsWord(response.content, "FARM")){
-                runAgent("import requests\\n\\nurl = 'https://5028-49-204-139-204.ngrok-free.app/api/data'\\n\\npayload = {\\n    'key': 'FARM'\\n}\\nheaders = {\\n    'Content-Type': 'application/json'\\n}\\n\\nresponse = requests.post(url, json=payload, headers=headers)\\n\\nprint(response.text)","", 1,run.flowletAddress,run.flowId);
-            }else {
-                runAgent("import requests\\n\\nurl = 'https://5028-49-204-139-204.ngrok-free.app/api/data'\\n\\npayload = {\\n    'key': 'HOLD'\\n}\\nheaders = {\\n    'Content-Type': 'application/json'\\n}\\n\\nresponse = requests.post(url, json=payload, headers=headers)\\n\\nprint(response.text)","", 1,run.flowletAddress,run.flowId);
-            }
+            IOracle(oracleAddress).createOpenAiLlmCall(runId, config);
         }
         if (!compareStrings(response.functionName, "")) {
             IOracle(oracleAddress).createFunctionCall(runId, "code_interpreter", response.functionArguments);
@@ -204,31 +200,6 @@ contract Agent {
         return (keccak256(abi.encodePacked((a))) == keccak256(abi.encodePacked((b))));
     }
 
-    function containsWord(string memory str, string memory word) public pure returns (bool) {
-        bytes memory strBytes = bytes(str);
-        bytes memory wordBytes = bytes(word);
-
-        // Handle edge cases
-        if (wordBytes.length == 0 || strBytes.length < wordBytes.length) {
-            return false;
-        }
-
-        bytes32 wordHash = keccak256(wordBytes);
-
-        // Check all possible substrings of `str` that are of length `word`
-        for (uint i = 0; i <= strBytes.length - wordBytes.length; i++) {
-            bytes memory substring = new bytes(wordBytes.length);
-            for (uint j = 0; j < wordBytes.length; j++) {
-                substring[j] = strBytes[i + j];
-            }
-            if (keccak256(substring) == wordHash) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-
     function notifyFlowlet(uint runId) private {
         AgentRun storage run = agentRuns[runId];
         if (run.flowletAddress != address(0)) {
@@ -239,6 +210,4 @@ contract Agent {
             require(success, "Flowlet notification failed");
         }
     }
-
-
 }
