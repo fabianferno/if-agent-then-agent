@@ -32,6 +32,9 @@ if-then-Agent empowers users to build their own swarm of AI agents. We provide a
 
 - **Code Interpreter Errors:** Sometimes, the code_interpreter fails to work correctly when code that could generate an error is entered. In these cases, the error is not properly returned to the Agent contract in the callback.Stating the contract callback args are not matching.
 
+  ![Screenshot 2024-09-08 at 12 38 55 PM](https://github.com/user-attachments/assets/d1c0c599-ef65-457f-809b-d42954661072)
+
+
 - **Simple Code Execution Fails:** Occasionally, even simple and correct code, such as a print statement like print(2+1), may throw an error. This behavior is unpredictable, as it sometimes provides the correct response. The (e2e) interepreter needs to be fixed to handle such errors more effectively.
 
 - **Oracle Clutter:** Another major issue is that the oracle starts to clutter when unhandled errors accumulate. The LLM begins to hallucinate, and the addLLMResponse function keeps running continuously for a particular agent call. This eventually clogs the oracle, leading to delays in other calls, which may only be resolved by performing a cold start.
