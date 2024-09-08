@@ -1,4 +1,4 @@
-'use client'
+'use client';
 
 import { useTheme } from 'next-themes'; // Add this import
 import {
@@ -9,12 +9,17 @@ import {
     MarkerType,
 } from '@xyflow/react';
 import React, { useCallback } from 'react';
-import Layout from '@/components/layouts/MainLayout';
+import MainLayout from '@/components/layouts/MainLayout';
 import { getStraightPath, useInternalNode } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import '@/components/reactflow/style.css';
 import { Handle, Position, useConnection } from '@xyflow/react';
 import { getEdgeParams } from '@/components/reactflow/utils';
+import Link from 'next/link';
+import axios from 'axios';
+import { useAccount } from 'wagmi';
+import { useState, useEffect } from 'react';
+
 
 function FloatingEdge({ id, source, target, markerEnd, style }: { id: string, source: string, target: string, markerEnd: string, style: React.CSSProperties }) {
     const sourceNode = useInternalNode(source);
@@ -122,6 +127,14 @@ const edgeTypes = {
 
 
 const EasyConnectExample = () => {
+    const [flowletName, setFlowletName] = useState('');
+    const { address } = useAccount();
+
+    const [edges, setEdges, onEdgesChange] = useEdgesState([] as any[]);
+    const { theme } = useTheme(); // Add this line
+
+
+
     const [nodes, setNodes, onNodesChange] = useNodesState([
         {
             id: '1',
@@ -149,8 +162,8 @@ const EasyConnectExample = () => {
         },
 
     ] as any[]);
-    const [edges, setEdges, onEdgesChange] = useEdgesState([] as any[]);
-    const { theme } = useTheme(); // Add this line
+
+
 
     const onConnect = useCallback(
         (params: any) => setEdges((eds) => addEdge(params, eds)),
@@ -168,60 +181,104 @@ const EasyConnectExample = () => {
     };
 
     const { bg, stroke } = theme === 'dark'
-        ? { bg: 'bg-zinc-900', stroke: 'white' }
-        : { bg: 'bg-white', stroke: 'black' };; // Add this line
+        ? { bg: '', stroke: 'white' }
+        : { bg: '', stroke: 'black' };; // Add this line
+
+    function addNode(data: any) {
+        setNodes([...nodes, {
+            id: nodes.length + "",
+            type: 'custom',
+            position: { x: 0, y: 0 },
+            data,
+        }]);
+    }
+
+    function parseFlowletFromConnections() {
+        const connections = edges.map((edge) => {
+            return {
+                from: edge.source,
+                to: edge.target,
+            }
+        })
+        return connections
+    }
+
+
+    async function saveFlowlet() {
+        console.log("Saving flowlet:", nodes);
+        const response = await axios.post('/api/attest', {
+            data: {
+                name: "My Flowlet",
+                createdBy: address,
+                flowlet: parseFlowletFromConnections(),
+            },
+            indexingValue: address
+        });
+
+        console.log("Attestation response:", response);
+    }
 
     return (
-        <Layout>
-            <div className={`grid grid-row-2 gap-2`} >
-                <div className="flex flex-row gap-2 justify-between items-start mb-6">
-                    <div>
-                        <h1 className="text-2xl font-bold">Create a new workflow</h1>
-                        <p>Select an agent and create a workflow to automate your tasks.</p>
-                    </div>
-                    <div className='flex flex-col items-end justify-end gap-2'> <div className="grid grid-cols-3 text-center gap-2">
-                        <button onClick={() => {
-                            setNodes([...nodes, {
-                                id: '4',
-                                type: 'custom',
-                                position: { x: 0, y: 0 },
-                                data: {
+        <MainLayout>
+            <div className={`flex flex-col w-[50vw]`} >
+                <div className="flex flex-row justify-between items-start mb-6 w-full pb-3 rounded-lg border-b border-zinc-700">
+                    <div className='flex flex-col gap-4'>
+                        <div className='mb-6'>
+                            <h1 className="text-2xl font-bold">Create a new workflow</h1>
+                            <p>Select an agent and create a workflow to automate your tasks.</p>
+                        </div>
+                        <div className="flex text-center gap-2 mr-5">
+                            <button onClick={() => {
+                                addNode({
                                     label: 'News Agent',
-                                },
-                            }])
-                        }} className="text-md text-nowrap bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 rounded-md p-2 font-bold">News Agent</button>
-                        <button onClick={() => {
-                            setNodes([...nodes, {
-                                id: '5',
-                                type: 'custom',
-                                position: { x: 0, y: 0 },
-                                data: {
+                                })
+                            }} className="text-md text-nowrap bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 rounded-md p-2 font-bold">
+                                News Agent 📰
+                            </button>
+                            <button onClick={() => {
+                                addNode({
                                     label: 'Crypto Agent',
-                                },
-                            }])
-                        }} className="text-md text-nowrap bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 rounded-md p-2 font-bold">Crypto Agent</button>
-                        <button onClick={() => {
-                            setNodes([...nodes, {
-                                id: '6',
-                                type: 'custom',
-                                position: { x: 0, y: 0 },
-                                data: {
+                                })
+                            }} className="text-md text-nowrap bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 rounded-md p-2 font-bold">
+                                Crypto Agent ⛓️
+                            </button>
+                            <button onClick={() => {
+                                addNode({
                                     label: 'Social Agent',
-                                },
-                            }])
-                        }} className="text-md text-nowrap bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 rounded-md p-2 font-bold">Social Agent</button>
+                                })
+                            }} className="text-md text-nowrap bg-zinc-800 dark:bg-zinc-200 text-white dark:text-zinc-900 rounded-md p-2 font-bold">
+                                Social Agent 💬
+                            </button>
+                            <Link href="https://github.com/fabianferno/if-agent-then-agent/blob/main/contracts/AgentTemplate.sol" target='_blank' className="text-md text-nowrap bg-zinc-800 dark:border-zinc-200 border text-white dark:text-zinc-100 rounded-md p-2 font-bold">
+                                Create Agent +
+                            </Link>
+                        </div>
                     </div>
-                        <div className="flex flex-row gap-2 w-full">
-                            <button className="flex items-center justify-between text-md text-nowrap w-full dark:border-orange-500 dark:text-zinc-100 border hover:bg-orange-500  border-orange-500 rounded-md p-2 font-bold transition ease-in-out dark:hover:text-zinc-900">
-                                Start Flowlet <div><svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12a7.5 7.5 0 0 0 15 0m-15 0a7.5 7.5 0 1 1 15 0m-15 0H3m16.5 0H21m-1.5 0H12m-8.457 3.077 1.41-.513m14.095-5.13 1.41-.513M5.106 17.785l1.15-.964m11.49-9.642 1.149-.964M7.501 19.795l.75-1.3m7.5-12.99.75-1.3m-6.063 16.658.26-1.477m2.605-14.772.26-1.477m0 17.726-.26-1.477M10.698 4.614l-.26-1.477M16.5 19.794l-.75-1.299M7.5 4.205 12 12m6.894 5.785-1.149-.964M6.256 7.178l-1.15-.964m15.352 8.864-1.41-.513M4.954 9.435l-1.41-.514M12.002 12l-3.75 6.495" />
+                    <div className='flex w-[30%] flex-col items-between justify-between gap-2'>
+                        <div className="flex items-center justify-between w-full gap-2 mr-5">
+                            <button onClick={() => setNodes([])} className="flex-1 text-md text-nowrap bg-zinc-700 dark:bg-zinc-600 text-white rounded-md p-2 font-bold hover:bg-zinc-600 dark:hover:bg-zinc-700 transition ease-in-out">
+                                Reset flowlet
+                            </button>
+                            <button onClick={() => {
+                                // Implement beautify logic here 
+                            }} className="flex-1 text-md text-nowrap bg-zinc-800 dark:bg-zinc-700 text-white rounded-md p-2 font-bold hover:bg-zinc-700 dark:hover:bg-zinc-800 transition ease-in-out">
+                                Beautify
+                            </button>
+                        </div>
+                        <div className='flex flex-col items-center justify-between gap-2'>
+                            <input type="text" placeholder="Flowlet name" className="flex w-full text-md text-nowrap bg-zinc-700 dark:bg-zinc-600 text-white rounded-md p-2 font-bold hover:bg-zinc-600 dark:hover:bg-zinc-700 transition ease-in-out" />
+                            <button onClick={saveFlowlet} className="flex items-center text-zinc-900 justify-between text-md bg-orange-500 text-nowrap w-full dark:border-orange-500 dark:text-zinc-900 border hover:bg-orange-500 border-orange-500 rounded-md p-2 font-bold transition ease-in-out dark:hover:text-zinc-900">
+                                <span className='mr-2'>
+                                    Save Flowlet
+                                </span>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="size-6">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.75V12A2.25 2.25 0 0 1 4.5 9.75h15A2.25 2.25 0 0 1 21.75 12v.75m-8.69-6.44-2.12-2.12a1.5 1.5 0 0 0-1.061-.44H4.5A2.25 2.25 0 0 0 2.25 6v12a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9a2.25 2.25 0 0 0-2.25-2.25h-5.379a1.5 1.5 0 0 1-1.06-.44Z" />
                                 </svg>
-                                </div>
                             </button>
                         </div>
                     </div>
                 </div>
-                <div className={`${bg} rounded-lg transition-colors duration-200`} style={{ height: '55vh', width: '100%' }}>
+                <div className={`${bg}  dark:border-zinc-600 rounded-lg transition-colors duration-200`} style={{ height: '40vh', width: '100%' }}>
                     <ReactFlow
                         nodes={nodes}
                         edges={edges}
@@ -243,7 +300,7 @@ const EasyConnectExample = () => {
                     />
                 </div>
             </div>
-        </Layout>
+        </MainLayout>
     );
 };
 
