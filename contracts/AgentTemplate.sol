@@ -5,7 +5,7 @@ pragma solidity ^0.8.9;
 // import "hardhat/console.sol";
 import "./IOracle.sol";
 
-contract NewsAgent {
+contract Agent {
 
     string public prompt;
 
@@ -14,7 +14,6 @@ contract NewsAgent {
         string content;
     }
 
-   
     struct AgentRun {
         address owner;
         address flowletAddress; // Address of the Flowlet contract
@@ -25,7 +24,6 @@ contract NewsAgent {
         bool is_finished;
         string user_query;
     }
-
 
     mapping(uint => AgentRun) public agentRuns;
     uint private agentRunCount;
@@ -80,7 +78,7 @@ contract NewsAgent {
         emit OracleAddressUpdated(newOracleAddress);
     }
 
-    function runAgent(string memory user_query , string memory topic, uint8 max_iterations,address flowletAddress , uint256 flowId) public returns (uint i) {
+    function runAgent(string memory user_query , string memory fname, uint8 max_iterations , address flowletAddress , uint256 flowId) public returns (uint i) {
         AgentRun storage run = agentRuns[agentRunCount];
 
         run.owner = msg.sender;
@@ -92,8 +90,10 @@ contract NewsAgent {
         run.flowletAddress = flowletAddress;
         run.flowId = flowId;
 
+
+// Modify the query to include the user's query , and modify the python, content for your desired output
         string memory query = string(abi.encodePacked(
-        "import requests; url = 'https://2d68-49-204-142-192.ngrok-free.app/api/news?topic=",topic,"';", 
+        "import requests; url = 'https://if-agent-then-agent.onrender.com/api/social/farcaster?fname=",fname,"';", 
         "response = requests.get(url); data = response.json(); print('Response Data:', data)"
     ));
 
@@ -116,7 +116,7 @@ contract NewsAgent {
         return currentId;
     }
 
-   function onOracleOpenAiLlmResponse(
+    function onOracleOpenAiLlmResponse(
         uint runId,
         IOracle.OpenAiResponse memory response,
         string memory errorMessage
@@ -145,6 +145,8 @@ contract NewsAgent {
             run.messages.push(assistantMessage);
             run.responsesCount++;
         }
+
+        // Whe the response is recieved , we perform the analysis and send the result to the user
         if (run.responsesCount == 1) {
             Message memory UserMessage;
             UserMessage.content = string(abi.encodePacked("With the following pyhton execution result, please reply to this user's query : " , run.user_query,"Give your thoughts as your role a specific agent"));
@@ -159,6 +161,7 @@ contract NewsAgent {
         run.is_finished = true;
         notifyFlowlet(runId);
     }
+
     function onOracleFunctionResponse(
         uint runId,
         string memory response,
@@ -204,9 +207,12 @@ contract NewsAgent {
         return (keccak256(abi.encodePacked((a))) == keccak256(abi.encodePacked((b))));
     }
 
+
+    // The callback function to notify the Flowlet contract about the agent run completion and pass the context to the Flowlet contract
     function notifyFlowlet(uint runId) private {
         AgentRun storage run = agentRuns[runId];
         if (run.flowletAddress != address(0)) {
+            // Assuming the Flowlet contract has an `onAgentRunCompleted` function
             (bool success, ) = run.flowletAddress.call(
                 abi.encodeWithSignature("onAgentRunCompleted(uint256,address,string)", runId, address(this),getMessageHistoryContents(runId)) // add result 
             );
